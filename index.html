@@ -1,256 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AI Chat Assistant</title>
-  <script src="https://js.puter.com/v2/"></script>
+
+  <!-- Optional external AI script (uncomment if available) -->
+  <!-- <script src="https://js.puter.com/v2/"></script> -->
+
   <style>
-    :root {
-      --bg-gradient: radial-gradient(circle at center, #1f1c2c, #928dab, #1f1c2c);
-      --header-bg: rgba(0,0,0,0.4);
-      --user-msg: #4cafef;
-      --bot-msg: #2e2e3a;
-      --text-color: #fff;
+    :root{
+      --accent-1:#7c4dff;
+      --accent-2:#00d4ff;
+      --bg-dark:#0b0a14;
+      --panel: rgba(255,255,255,0.04);
+      --glass: rgba(255,255,255,0.03);
+      --text:#e9eef8;
+      --muted:rgba(233,238,248,0.72);
     }
 
-    body.light {
-      --bg-gradient: radial-gradient(circle at center, #fdfbfb, #ebedee, #fdfbfb);
-      --header-bg: rgba(255,255,255,0.8);
-      --user-msg: #2196f3;
-      --bot-msg: #e0e0e0;
-      --text-color: #000;
+    body.light{
+      --accent-1:#6b46ff;
+      --accent-2:#00a3ff;
+      --bg-dark:#f6f8fb;
+      --panel: rgba(0,0,0,0.04);
+      --glass: rgba(0,0,0,0.02);
+      --text:#0b1220;
+      --muted:rgba(11,18,32,0.72);
     }
 
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--bg-gradient);
-      background-size: 400% 400%;
-      animation: glowingBackground 15s ease infinite;
-      color: var(--text-color);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      transition: background 0.5s, color 0.5s;
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif;color:var(--text);background:linear-gradient(135deg,#0b0710 0%, #1b1530 40%, #0b1b2b 100%);}
+
+    /* Glowing animated background layers */
+    body{
+      background:
+        radial-gradient(600px 400px at 10% 20%, rgba(124,77,255,0.12), transparent 10%),
+        radial-gradient(500px 350px at 85% 80%, rgba(0,212,255,0.10), transparent 12%),
+        linear-gradient(135deg, var(--bg-dark), #121026 60%);
+      background-size: 200% 200%;
+      animation: bgShift 18s ease-in-out infinite;
+      display:flex;
+      flex-direction:column;
+    }
+    @keyframes bgShift{
+      0%{background-position:0% 0%}
+      50%{background-position:100% 100%}
+      100%{background-position:0% 0%}
     }
 
-    @keyframes glowingBackground {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      gap:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      backdrop-filter: blur(6px);
+      border-bottom:1px solid rgba(255,255,255,0.03);
     }
 
-    header {
-      padding: 15px;
-      text-align: center;
-      background: var(--header-bg);
-      font-size: 1.5em;
-      font-weight: bold;
-      letter-spacing: 1px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:white;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
+    .title{font-size:1.05rem;font-weight:600;letter-spacing:0.2px}
+    .subtitle{font-size:0.8rem;color:var(--muted);margin-top:2px}
 
-    #chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-    }
+    .controls{display:flex;align-items:center;gap:8px}
+    select, button, input[type="text"]{font-family:inherit;font-size:0.95rem}
+    #model-select{padding:8px 10px;border-radius:8px;border:none;background:var(--glass);color:var(--text);box-shadow:inset 0 -1px 0 rgba(0,0,0,0.15)}
+    .icon-btn{padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+    .ghost-btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);cursor:pointer}
 
-    .message {
-      max-width: 70%;
-      margin: 10px 0;
-      padding: 12px 18px;
-      border-radius: 12px;
-      line-height: 1.4em;
-      animation: fadeIn 0.3s ease-in-out;
-    }
+    main{flex:1;display:flex;gap:18px;padding:18px;min-height:0}
 
-    .user {
-      background: var(--user-msg);
-      color: #fff;
-      margin-left: auto;
-      text-align: right;
-    }
+    /* Chat panel */
+    .panel{flex:1;display:flex;flex-direction:column;border-radius:12px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 10px 40px rgba(2,6,23,0.5);min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,0.03)}
+    #chat-container{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .message{max-width:78%;padding:12px 14px;border-radius:12px;line-height:1.35;word-wrap:break-word}
+    .message.user{margin-left:auto;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;box-shadow:0 8px 20px rgba(124,77,255,0.12)}
+    .message.bot{margin-right:auto;background:rgba(255,255,255,0.03);color:var(--text);border:1px solid rgba(255,255,255,0.02)}
+    .meta{font-size:0.78rem;color:var(--muted);margin-bottom:6px}
+    .typing{font-style:italic;color:var(--muted);padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);width:max-content}
 
-    .bot {
-      background: var(--bot-msg);
-      color: var(--text-color);
-      margin-right: auto;
-      text-align: left;
-    }
+    /* Input area */
+    #input-area{display:flex;gap:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.02)}
+    #user-input{flex:1;padding:12px 14px;border-radius:10px;border:none;background:rgba(255,255,255,0.02);color:var(--text);outline:none}
+    #send-btn{padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;cursor:pointer}
 
-    #input-area {
-      display: flex;
-      padding: 15px;
-      background: var(--header-bg);
-    }
+    /* Right info column */
+    .side{width:320px;display:flex;flex-direction:column;gap:12px}
+    .card{padding:14px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03)}
+    .card h3{margin:0 0 8px 0}
+    .small{font-size:0.9rem;color:var(--muted)}
 
-    #user-input {
-      flex: 1;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
-      font-size: 1em;
-    }
+    /* Info modal */
+    #info-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;max-width:90%;z-index:9999;padding:18px;border-radius:12px;display:none}
+    #info-modal .modal-body{display:flex;flex-direction:column;gap:10px}
+    #info-modal img{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.06)}
+    .form-row{display:flex;flex-direction:column;gap:6px}
+    .form-row input{padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:var(--text)}
+    .modal-actions{display:flex;gap:8px;justify-content:center;margin-top:6px}
 
-    #send-btn, #toggle-mode, #clear-btn, #download-btn, #info-btn {
-      margin-left: 10px;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      background: var(--user-msg);
-      color: #fff;
-      font-size: 1em;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    #send-btn:hover, #toggle-mode:hover, #clear-btn:hover, #download-btn:hover, #info-btn:hover {
-      background: #2196f3;
-    }
-
-    #model-select {
-      margin-left: 10px;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-      font-size: 1em;
-    }
-
-    .typing {
-      font-style: italic;
-      opacity: 0.7;
-      margin: 5px 0;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Info Modal */
-    #info-modal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: var(--header-bg);
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      color: var(--text-color);
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      z-index: 999;
-    }
-
-    #info-modal img {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      margin-bottom: 15px;
-    }
-
-    #info-modal button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 8px;
-      background: var(--user-msg);
-      color: #fff;
-      cursor: pointer;
-    }
+    footer{padding:10px 18px;color:var(--muted);font-size:0.9rem;text-align:center}
+    @media (max-width:900px){ main{flex-direction:column} .side{width:100%} }
   </style>
 </head>
 <body>
   <header>
-    <span>💬 AI Chat Assistant</span>
-    <div>
-      <select id="model-select">
+    <div class="brand">
+      <div class="logo">AI</div>
+      <div>
+        <div class="title">AI Chat Assistant</div>
+        <div class="subtitle">Ask anything — stylish, fast, and personal</div>
+      </div>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Controls">
+      <select id="model-select" title="Choose model">
         <option value="gpt-5.2-chat">GPT-5.2 Chat</option>
         <option value="gpt-5.2">GPT-5.2</option>
         <option value="gpt-5.2-pro">GPT-5.2 Pro</option>
         <option value="gpt-5.1">GPT-5.1</option>
       </select>
-      <button id="toggle-mode">🌙</button>
-      <button id="clear-btn">🗑️ Clear</button>
-      <button id="download-btn">⬇️ Download</button>
-      <button id="info-btn">ℹ️ Info</button>
+
+      <button id="toggle-mode" class="ghost-btn" title="Toggle theme">🌙</button>
+      <button id="info-btn" class="ghost-btn" title="Developer info">ℹ️</button>
+      <button id="download-btn" class="ghost-btn" title="Download chat">⬇️</button>
+      <button id="clear-btn" class="ghost-btn" title="Clear chat">🗑️</button>
     </div>
   </header>
-  <div id="chat-container"></div>
-  <div id="input-area">
-    <input type="text" id="user-input" placeholder="Ask me anything..." />
-    <button id="send-btn">Send</button>
-  </div>
 
-  <!-- Developer Info Modal -->
-  <div id="info-modal">
-    <img src="your-picture.jpg" alt="Developer Picture">
-    <h2>Your Name</h2>
-    <p>Email: your@email.com</p>
-    <p>Phone: +123456789</p>
-    <button onclick="document.getElementById('info-modal').style.display='none'">Close</button>
+  <main>
+    <section class="panel" aria-label="Chat panel">
+      <div id="chat-container" role="log" aria-live="polite"></div>
+
+      <div id="input-area">
+        <input id="user-input" type="text" placeholder="Ask me anything..." aria-label="Message input" />
+        <button id="send-btn" aria-label="Send message">Send</button>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="Sidebar">
+      <div class="card">
+        <h3>Quick tips</h3>
+        <div class="small">Try: "Explain quantum entanglement", "Write a short poem", or "Who created you?"</div>
+      </div>
+
+      <div class="card">
+        <h3>Session</h3>
+        <div class="small">Model: <strong id="current-model">GPT-5.2 Chat</strong></div>
+        <div style="height:8px"></div>
+        <div class="small">Theme: <strong id="current-theme">Dark</strong></div>
+      </div>
+
+      <div class="card">
+        <h3>Developer</h3>
+        <div id="dev-preview" style="display:flex;gap:12px;align-items:center">
+          <img id="dev-pic" src="" alt="dev" style="width:56px;height:56px;border-radius:8px;object-fit:cover;background:linear-gradient(90deg,var(--accent-1),var(--accent-2))">
+          <div>
+            <div id="dev-name" style="font-weight:600">Your Name</div>
+            <div id="dev-contact" class="small">your@email.com • +123456789</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>Built with a stylish UI — your assistant, ready to help.</footer>
+
+  <!-- Info Modal -->
+  <div id="info-modal" class="card" role="dialog" aria-modal="true" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>Developer Info</strong>
+      <button id="close-info" class="ghost-btn" style="padding:6px 8px">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img id="modal-pic" src="" alt="Developer picture placeholder">
+        <div style="flex:1">
+          <div class="form-row">
+            <label class="small">Name</label>
+            <input id="dev-name-input" type="text" placeholder="Your Name">
+          </div>
+          <div class="form-row">
+            <label class="small">Email</label>
+            <input id="dev-email-input" type="text" placeholder="you@example.com">
+          </div>
+          <div class="form-row">
+            <label class="small">Phone</label>
+            <input id="dev-phone-input" type="text" placeholder="+123456789">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="small">Picture URL</label>
+        <input id="dev-pic-input" type="text" placeholder="https://example.com/me.jpg">
+      </div>
+
+      <div class="modal-actions">
+        <button id="save-dev" class="icon-btn">Save</button>
+        <button id="reset-dev" class="ghost-btn">Reset</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    const chatContainer = document.getElementById("chat-container");
-    const userInput = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
-    const modelSelect = document.getElementById("model-select");
-    const toggleMode = document.getElementById("toggle-mode");
-    const clearBtn = document.getElementById("clear-btn");
-    const downloadBtn = document.getElementById("download-btn");
-    const infoBtn = document.getElementById("info-btn");
+    // Elements
+    const chatContainer = document.getElementById('chat-container');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const modelSelect = document.getElementById('model-select');
+    const toggleMode = document.getElementById('toggle-mode');
+    const clearBtn = document.getElementById('clear-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const infoBtn = document.getElementById('info-btn');
+    const infoModal = document.getElementById('info-modal');
+    const closeInfo = document.getElementById('close-info');
+    const saveDev = document.getElementById('save-dev');
+    const resetDev = document.getElementById('reset-dev');
 
-    // Load saved chat history
-    window.onload = () => {
-      const saved = JSON.parse(localStorage.getItem("chatHistory")) || [];
-      saved.forEach(msg => addMessage(msg.text, msg.sender, false));
+    const devNameInput = document.getElementById('dev-name-input');
+    const devEmailInput = document.getElementById('dev-email-input');
+    const devPhoneInput = document.getElementById('dev-phone-input');
+    const devPicInput = document.getElementById('dev-pic-input');
+
+    const devNamePreview = document.getElementById('dev-name');
+    const devContactPreview = document.getElementById('dev-contact');
+    const devPicPreview = document.getElementById('dev-pic');
+    const modalPic = document.getElementById('modal-pic');
+
+    const currentModelLabel = document.getElementById('current-model');
+    const currentThemeLabel = document.getElementById('current-theme');
+
+    // Defaults
+    const DEFAULT_DEV = {
+      name: "Your Name",
+      email: "your@email.com",
+      phone: "+123456789",
+      pic: ""
     };
 
-    function addMessage(text, sender, save = true) {
-      const msg = document.createElement("div");
-      msg.classList.add("message", sender);
-      msg.innerHTML = text;
-      chatContainer.appendChild(msg);
+    // Dev info persistence
+    function saveDevInfo(obj){
+      try { localStorage.setItem('devInfo', JSON.stringify(obj)); } catch(e){ console.warn('Could not save dev info', e); }
+      applyDevInfo(obj);
+    }
+    function loadDevInfo(){
+      try{
+        const raw = localStorage.getItem('devInfo');
+        return raw ? JSON.parse(raw) : DEFAULT_DEV;
+      }catch(e){ return DEFAULT_DEV; }
+    }
+    function applyDevInfo(obj){
+      devNamePreview.textContent = obj.name || DEFAULT_DEV.name;
+      devContactPreview.textContent = `${obj.email || DEFAULT_DEV.email} • ${obj.phone || DEFAULT_DEV.phone}`;
+      devPicPreview.src = obj.pic || '';
+      modalPic.src = obj.pic || '';
+      devNameInput.value = obj.name || '';
+      devEmailInput.value = obj.email || '';
+      devPhoneInput.value = obj.phone || '';
+      devPicInput.value = obj.pic || '';
+    }
+
+    // Chat history persistence
+    function loadHistory(){
+      try{
+        const raw = localStorage.getItem('chatHistory');
+        return raw ? JSON.parse(raw) : [];
+      }catch(e){ return []; }
+    }
+    function saveHistory(arr){
+      try{ localStorage.setItem('chatHistory', JSON.stringify(arr)); } catch(e){ console.warn('Could not save history', e); }
+    }
+    function appendMessage(text, sender, save=true){
+      const el = document.createElement('div');
+      el.className = 'message ' + (sender === 'user' ? 'user' : 'bot');
+
+      if(sender === 'bot'){
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = 'Assistant';
+        el.appendChild(meta);
+      }
+
+      const content = document.createElement('div');
+      content.innerHTML = String(text).replace(/\n/g,'<br>');
+      el.appendChild(content);
+      chatContainer.appendChild(el);
       chatContainer.scrollTop = chatContainer.scrollHeight;
 
-      if (save) {
-        const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-        history.push({ text, sender });
-        localStorage.setItem("chatHistory", JSON.stringify(history));
+      if(save){
+        const history = loadHistory();
+        history.push({text, sender, time: Date.now()});
+        saveHistory(history);
       }
     }
 
-    function addTypingIndicator() {
-      const typing = document.createElement("div");
-      typing.classList.add("typing");
-      typing.innerText = "Bot is typing…";
-      typing.id = "typing-indicator";
-      chatContainer.appendChild(typing);
+    function renderHistory(){
+      chatContainer.innerHTML = '';
+      const history = loadHistory();
+      history.forEach(item => appendMessage(item.text, item.sender, false));
+    }
+
+    // Typing indicator
+    function showTyping(){
+      removeTyping();
+      const t = document.createElement('div');
+      t.id = 'typing-indicator';
+      t.className = 'typing';
+      t.textContent = 'Bot is typing…';
+      chatContainer.appendChild(t);
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-
-    function removeTypingIndicator() {
-      const typing = document.getElementById("typing-indicator");
-      if (typing) typing.remove();
+    function removeTyping(){
+      const t = document.getElementById('typing-indicator');
+      if(t) t.remove();
     }
 
-    async function sendMessage() {
+    // Model & theme handlers
+    modelSelect.addEventListener('change', () => {
+      currentModelLabel.textContent = modelSelect.options[modelSelect.selectedIndex].text;
+    });
+
+    toggleMode.addEventListener('click', () => {
+      document.body.classList.toggle('light');
+      const isLight = document.body.classList.contains('light');
+      toggleMode.textContent = isLight ? '☀️' : '🌙';
+      currentThemeLabel.textContent = isLight ? 'Light' : 'Dark';
+      try { localStorage.setItem('themeLight', isLight ? '1' : '0'); } catch(e){}
+    });
+
+    // Clear chat
+    clearBtn.addEventListener('click', () => {
+      try { localStorage.removeItem('chatHistory'); } catch(e){}
+      chatContainer.innerHTML = '';
+      appendMessage('Chat cleared ✅', 'bot', false);
+    });
+
+    // Download chat
+    downloadBtn.addEventListener('click', () => {
+      const history = loadHistory();
+      if(!history.length){
+        alert('No chat history to download.');
+        return;
+      }
+      let content = 'AI Chat Assistant Conversation\n\n';
+      history.forEach(h => {
+        const who = h.sender === 'user' ? 'You' : 'Bot';
+        content += `${who}: ${h.text}\n\n`;
+      });
+      const blob = new Blob([content], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'chat_history.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Info modal handlers
+    infoBtn.addEventListener('click', () => {
+      infoModal.style.display = 'block';
+      infoModal.setAttribute('aria-hidden','false');
+    });
+    closeInfo.addEventListener('click', () => {
+      infoModal.style.display = 'none';
+      infoModal.setAttribute('aria-hidden','true');
+    });
+
+    saveDev.addEventListener('click', () => {
+      const obj = {
+        name: devNameInput.value.trim() || DEFAULT_DEV.name,
+        email: devEmailInput.value.trim() || DEFAULT_DEV.email,
+        phone: devPhoneInput.value.trim() || DEFAULT_DEV.phone,
+        pic: devPicInput.value.trim() || ''
+      };
+      saveDevInfo(obj);
+      infoModal.style.display = 'none';
+      infoModal.setAttribute('aria-hidden','true');
+    });
+
+    resetDev.addEventListener('click', () => {
+      saveDevInfo(DEFAULT_DEV);
+      infoModal.style.display = 'none';
+      infoModal.setAttribute('aria-hidden','true');
+    });
+
+    // Send message logic with defensive checks
+    async function sendMessage(){
       const text = userInput.value.trim();
-      if (!text) return;
-      addMessage(text, "user");
-      userInput.value = "";
+      if(!text) return;
+      appendMessage(text, 'user');
+      userInput.value = '';
+      showTyping();
 
-      addTypingIndicator();
+      const dev = loadDevInfo();
+      const creatorRegex = /\b(who (created|made|built) (you|this|the assistant)|who is your creator|who developed you|who made you)\b/i;
+      const askCreator = creatorRegex.test(text);
 
-      const model = modelSelect.value;
-      try {
-        // Special case: if user asks "who created you"
-        if (/who created/i.test(text)) {
-          removeTyping
+      try{
+        if(askCreator){
+          removeTyping();
+          appendMessage(`I was created by **${dev.name}** ✨`, 'bot');
+          return;
+        }
+
+        // Guard: if puter is not available, show helpful message but keep UI functional
+        if(typeof puter === 'undefined' || !puter || !puter.ai || typeof puter.ai.chat !== 'function'){
+          removeTyping();
+          appendMessage('AI service not available. Ensure the external AI script is loaded and accessible. You can still use local features like developer info, download, and clear.', 'bot');
+          console.warn('puter.ai.chat not available. If you want AI responses, include the provider script and ensure it loads without errors.');
+          return;
+        }
+
+        const model = modelSelect.value;
+        // Call external AI; this is wrapped to avoid breaking UI on errors
+        const response = await puter.ai.chat(text, { model });
+        removeTyping();
+        const respText = (typeof response === 'string') ? response : JSON.stringify(response);
+        appendMessage(respText, 'bot');
+      }catch(err){
+        removeTyping();
+        appendMessage('⚠️ Error: ' + (err && err.message ? err.message : String(err)), 'bot');
+        console.error('AI call failed', err);
+      }
+    }
+
+    // Keyboard & button wiring
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Initialization
+    (function init(){
+      // Load theme
+      const themeLight = localStorage.getItem('themeLight');
+      if(themeLight === '1') document.body.classList.add('light');
+      toggleMode.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+      currentThemeLabel.textContent = document.body.classList.contains('light') ? 'Light' : 'Dark';
+
+      // Load dev info and history
+      applyDevInfo(loadDevInfo());
+      renderHistory();
+
+      // Set model label
+      currentModelLabel.textContent = modelSelect.options[modelSelect.selectedIndex].text;
+
+      // Welcome message if empty
+      const history = loadHistory();
+      if(history.length === 0){
+        appendMessage("Hello — I'm your AI assistant. Ask me anything, or click ℹ️ to set developer info.", 'bot', false);
+      }
+
+      // Defensive console log
+      console.log('AI Chat Assistant initialized. puter available:', typeof puter !== 'undefined');
+    })();
+
+    // Accessibility: close modal on Escape
+    window.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){
+        if(infoModal.style.display === 'block'){
+          infoModal.style.display = 'none';
+          infoModal.setAttribute('aria-hidden','true');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
