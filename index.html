@@ -279,7 +279,7 @@ app.get('/', (req, res) => {
 // In production, move the key to environment variables and secure the endpoint.
 app.post('/api/chat', async (req, res) => {
   try {
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'PASTE_YOUR_OPENAI_API_KEY_HERE') {
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === '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') {
       return res.status(500).send('Server not configured with OpenAI API key. Edit app.js and paste your key for testing only.');
     }
 
