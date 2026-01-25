@@ -1,127 +1,91 @@
-<!DOCTYPE html>
+/**
+ * Single-file AI Chat app (frontend + server) using OpenAI Chat Completions.
+ *
+ * USAGE (test only):
+ * 1. Install Node.js (v18+ recommended).
+ * 2. Save this file as `app.js`.
+ * 3. Run: npm init -y
+ *          npm install express node-fetch
+ * 4. Edit the OPENAI_API_KEY constant below and paste your key for testing ONLY.
+ *    Do NOT commit or share the key. Remove it after testing or use environment variables.
+ * 5. Start: node app.js
+ * 6. Open http://localhost:3000
+ *
+ * NOTE: This file intentionally places the API key in a variable for quick local testing.
+ * For production, always use environment variables or a secure secrets manager.
+ */
+
+const express = require('express');
+const fetch = require('node-fetch'); // npm install node-fetch
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+
+// --------------------
+// Paste your OpenAI API key here for quick local testing ONLY.
+// Replace the string below with your key, then start the server.
+// WARNING: Do NOT commit this file with the key to any public repo.
+const OPENAI_API_KEY = 'PASTE_YOUR_OPENAI_API_KEY_HERE';
+// --------------------
+
+// Basic check
+if (!OPENAI_API_KEY || OPENAI_API_KEY === 'PASTE_YOUR_OPENAI_API_KEY_HERE') {
+  console.warn('Warning: OPENAI_API_KEY is not set or left as placeholder. The AI endpoint will return an error until you paste a valid key.');
+}
+
+// Serve the single-page frontend
+app.get('/', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Chat Assistant</title>
-
-  <!-- Optional external AI script (uncomment if available) -->
-  <!-- <script src="https://js.puter.com/v2/"></script> -->
-
-  <style>
-    :root{
-      --accent-1:#7c4dff;
-      --accent-2:#00d4ff;
-      --bg-dark:#0b0a14;
-      --panel: rgba(255,255,255,0.04);
-      --glass: rgba(255,255,255,0.03);
-      --text:#e9eef8;
-      --muted:rgba(233,238,248,0.72);
-    }
-
-    body.light{
-      --accent-1:#6b46ff;
-      --accent-2:#00a3ff;
-      --bg-dark:#f6f8fb;
-      --panel: rgba(0,0,0,0.04);
-      --glass: rgba(0,0,0,0.02);
-      --text:#0b1220;
-      --muted:rgba(11,18,32,0.72);
-    }
-
-    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif;color:var(--text);background:linear-gradient(135deg,#0b0710 0%, #1b1530 40%, #0b1b2b 100%);}
-
-    /* Glowing animated background layers */
-    body{
-      background:
-        radial-gradient(600px 400px at 10% 20%, rgba(124,77,255,0.12), transparent 10%),
-        radial-gradient(500px 350px at 85% 80%, rgba(0,212,255,0.10), transparent 12%),
-        linear-gradient(135deg, var(--bg-dark), #121026 60%);
-      background-size: 200% 200%;
-      animation: bgShift 18s ease-in-out infinite;
-      display:flex;
-      flex-direction:column;
-    }
-    @keyframes bgShift{
-      0%{background-position:0% 0%}
-      50%{background-position:100% 100%}
-      100%{background-position:0% 0%}
-    }
-
-    header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:14px 18px;
-      gap:12px;
-      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      backdrop-filter: blur(6px);
-      border-bottom:1px solid rgba(255,255,255,0.03);
-    }
-
-    .brand{display:flex;gap:12px;align-items:center}
-    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:white;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
-    .title{font-size:1.05rem;font-weight:600;letter-spacing:0.2px}
-    .subtitle{font-size:0.8rem;color:var(--muted);margin-top:2px}
-
-    .controls{display:flex;align-items:center;gap:8px}
-    select, button, input[type="text"]{font-family:inherit;font-size:0.95rem}
-    #model-select{padding:8px 10px;border-radius:8px;border:none;background:var(--glass);color:var(--text);box-shadow:inset 0 -1px 0 rgba(0,0,0,0.15)}
-    .icon-btn{padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,0.35)}
-    .ghost-btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);cursor:pointer}
-
-    main{flex:1;display:flex;gap:18px;padding:18px;min-height:0}
-
-    /* Chat panel */
-    .panel{flex:1;display:flex;flex-direction:column;border-radius:12px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 10px 40px rgba(2,6,23,0.5);min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,0.03)}
-    #chat-container{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-    .message{max-width:78%;padding:12px 14px;border-radius:12px;line-height:1.35;word-wrap:break-word}
-    .message.user{margin-left:auto;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;box-shadow:0 8px 20px rgba(124,77,255,0.12)}
-    .message.bot{margin-right:auto;background:rgba(255,255,255,0.03);color:var(--text);border:1px solid rgba(255,255,255,0.02)}
-    .meta{font-size:0.78rem;color:var(--muted);margin-bottom:6px}
-    .typing{font-style:italic;color:var(--muted);padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);width:max-content}
-
-    /* Input area */
-    #input-area{display:flex;gap:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.02)}
-    #user-input{flex:1;padding:12px 14px;border-radius:10px;border:none;background:rgba(255,255,255,0.02);color:var(--text);outline:none}
-    #send-btn{padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;cursor:pointer}
-
-    /* Right info column */
-    .side{width:320px;display:flex;flex-direction:column;gap:12px}
-    .card{padding:14px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03)}
-    .card h3{margin:0 0 8px 0}
-    .small{font-size:0.9rem;color:var(--muted)}
-
-    /* Info modal */
-    #info-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;max-width:90%;z-index:9999;padding:18px;border-radius:12px;display:none}
-    #info-modal .modal-body{display:flex;flex-direction:column;gap:10px}
-    #info-modal img{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.06)}
-    .form-row{display:flex;flex-direction:column;gap:6px}
-    .form-row input{padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:var(--text)}
-    .modal-actions{display:flex;gap:8px;justify-content:center;margin-top:6px}
-
-    footer{padding:10px 18px;color:var(--muted);font-size:0.9rem;text-align:center}
-    @media (max-width:900px){ main{flex-direction:column} .side{width:100%} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Chat Assistant (Single File)</title>
+<style>
+  :root{--accent-1:#7c4dff;--accent-2:#00d4ff;--bg:#0b1220;--text:#e9eef8}
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Arial,sans-serif;background:linear-gradient(135deg,#0b0710,#121026);color:var(--text)}
+  body{display:flex;flex-direction:column}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px)}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+  main{display:flex;gap:16px;padding:16px;flex:1;min-height:0}
+  .panel{flex:1;display:flex;flex-direction:column;border-radius:12px;padding:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);min-width:0}
+  #chat-container{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .message{max-width:78%;padding:12px;border-radius:12px;line-height:1.35;word-wrap:break-word}
+  .message.user{margin-left:auto;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white}
+  .message.bot{margin-right:auto;background:rgba(255,255,255,0.03);color:var(--text);border:1px solid rgba(255,255,255,0.02)}
+  #input-area{display:flex;gap:8px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.02)}
+  #user-input{flex:1;padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:var(--text);outline:none}
+  #send-btn{padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:white;cursor:pointer}
+  .controls{display:flex;gap:8px;align-items:center}
+  .ghost-btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);cursor:pointer}
+  .side{width:300px;display:flex;flex-direction:column;gap:12px}
+  .card{padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+  #info-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;max-width:90%;z-index:9999;padding:16px;border-radius:12px;display:none;background:rgba(10,10,12,0.95);color:var(--text)}
+  #info-modal input{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:var(--text)}
+  footer{padding:10px 16px;color:rgba(233,238,248,0.7);text-align:center}
+  @media (max-width:900px){main{flex-direction:column}.side{width:100%}}
+</style>
 </head>
 <body>
   <header>
     <div class="brand">
       <div class="logo">AI</div>
       <div>
-        <div class="title">AI Chat Assistant</div>
-        <div class="subtitle">Ask anything — stylish, fast, and personal</div>
+        <div style="font-weight:600">AI Chat Assistant</div>
+        <div style="font-size:0.85rem;color:rgba(233,238,248,0.7)">Local test with OpenAI key (paste for testing only)</div>
       </div>
     </div>
 
     <div class="controls" role="toolbar" aria-label="Controls">
       <select id="model-select" title="Choose model">
-        <option value="gpt-5.2-chat">GPT-5.2 Chat</option>
-        <option value="gpt-5.2">GPT-5.2</option>
-        <option value="gpt-5.2-pro">GPT-5.2 Pro</option>
-        <option value="gpt-5.1">GPT-5.1</option>
+        <option value="gpt-4o">gpt-4o</option>
+        <option value="gpt-4o-mini">gpt-4o-mini</option>
+        <option value="gpt-4">gpt-4</option>
+        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
       </select>
-
       <button id="toggle-mode" class="ghost-btn" title="Toggle theme">🌙</button>
       <button id="info-btn" class="ghost-btn" title="Developer info">ℹ️</button>
       <button id="download-btn" class="ghost-btn" title="Download chat">⬇️</button>
@@ -141,337 +105,225 @@
 
     <aside class="side" aria-label="Sidebar">
       <div class="card">
-        <h3>Quick tips</h3>
-        <div class="small">Try: "Explain quantum entanglement", "Write a short poem", or "Who created you?"</div>
+        <h3 style="margin:0 0 8px 0">Quick tips</h3>
+        <div style="color:rgba(233,238,248,0.7)">Try: "Explain quantum entanglement", "Write a short poem", or "Who created you?"</div>
       </div>
 
       <div class="card">
-        <h3>Session</h3>
-        <div class="small">Model: <strong id="current-model">GPT-5.2 Chat</strong></div>
-        <div style="height:8px"></div>
-        <div class="small">Theme: <strong id="current-theme">Dark</strong></div>
-      </div>
-
-      <div class="card">
-        <h3>Developer</h3>
+        <h3 style="margin:0 0 8px 0">Developer</h3>
         <div id="dev-preview" style="display:flex;gap:12px;align-items:center">
-          <img id="dev-pic" src="" alt="dev" style="width:56px;height:56px;border-radius:8px;object-fit:cover;background:linear-gradient(90deg,var(--accent-1),var(--accent-2))">
+          <img id="dev-pic" src="" alt="dev" style="width:56px;height:56px;border-radius:8px;object-fit:cover;background:linear-gradient(90deg,#7c4dff,#00d4ff)">
           <div>
             <div id="dev-name" style="font-weight:600">Your Name</div>
-            <div id="dev-contact" class="small">your@email.com • +123456789</div>
+            <div id="dev-contact" style="color:rgba(233,238,248,0.7)">your@email.com • +123456789</div>
           </div>
         </div>
       </div>
     </aside>
   </main>
 
-  <footer>Built with a stylish UI — your assistant, ready to help.</footer>
+  <footer>Local test server proxy to OpenAI. Do not expose your key publicly.</footer>
 
   <!-- Info Modal -->
-  <div id="info-modal" class="card" role="dialog" aria-modal="true" aria-hidden="true">
+  <div id="info-modal">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <strong>Developer Info</strong>
       <button id="close-info" class="ghost-btn" style="padding:6px 8px">✕</button>
     </div>
 
-    <div class="modal-body">
-      <div style="display:flex;gap:12px;align-items:center">
-        <img id="modal-pic" src="" alt="Developer picture placeholder">
-        <div style="flex:1">
-          <div class="form-row">
-            <label class="small">Name</label>
-            <input id="dev-name-input" type="text" placeholder="Your Name">
-          </div>
-          <div class="form-row">
-            <label class="small">Email</label>
-            <input id="dev-email-input" type="text" placeholder="you@example.com">
-          </div>
-          <div class="form-row">
-            <label class="small">Phone</label>
-            <input id="dev-phone-input" type="text" placeholder="+123456789">
-          </div>
-        </div>
-      </div>
+    <div style="margin-top:12px">
+      <label style="color:rgba(233,238,248,0.8)">Name</label>
+      <input id="dev-name-input" type="text" placeholder="Your Name">
+      <label style="color:rgba(233,238,248,0.8);margin-top:8px">Email</label>
+      <input id="dev-email-input" type="text" placeholder="you@example.com">
+      <label style="color:rgba(233,238,248,0.8);margin-top:8px">Phone</label>
+      <input id="dev-phone-input" type="text" placeholder="+123456789">
+      <label style="color:rgba(233,238,248,0.8);margin-top:8px">Picture URL</label>
+      <input id="dev-pic-input" type="text" placeholder="https://example.com/me.jpg">
 
-      <div class="form-row">
-        <label class="small">Picture URL</label>
-        <input id="dev-pic-input" type="text" placeholder="https://example.com/me.jpg">
-      </div>
-
-      <div class="modal-actions">
-        <button id="save-dev" class="icon-btn">Save</button>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button id="save-dev" style="padding:10px 14px;background:linear-gradient(90deg,#7c4dff,#00d4ff);color:white;border:none;border-radius:8px">Save</button>
         <button id="reset-dev" class="ghost-btn">Reset</button>
       </div>
     </div>
   </div>
 
-  <script>
-    // Elements
-    const chatContainer = document.getElementById('chat-container');
-    const userInput = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
-    const modelSelect = document.getElementById('model-select');
-    const toggleMode = document.getElementById('toggle-mode');
-    const clearBtn = document.getElementById('clear-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const infoBtn = document.getElementById('info-btn');
-    const infoModal = document.getElementById('info-modal');
-    const closeInfo = document.getElementById('close-info');
-    const saveDev = document.getElementById('save-dev');
-    const resetDev = document.getElementById('reset-dev');
+<script>
+/* Frontend logic: interacts with server endpoints below */
+(() => {
+  const chatContainer = document.getElementById('chat-container');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const modelSelect = document.getElementById('model-select');
+  const toggleMode = document.getElementById('toggle-mode');
+  const clearBtn = document.getElementById('clear-btn');
+  const downloadBtn = document.getElementById('download-btn');
+  const infoBtn = document.getElementById('info-btn');
+  const infoModal = document.getElementById('info-modal');
+  const closeInfo = document.getElementById('close-info');
+  const saveDev = document.getElementById('save-dev');
+  const resetDev = document.getElementById('reset-dev');
 
-    const devNameInput = document.getElementById('dev-name-input');
-    const devEmailInput = document.getElementById('dev-email-input');
-    const devPhoneInput = document.getElementById('dev-phone-input');
-    const devPicInput = document.getElementById('dev-pic-input');
+  const devNameInput = document.getElementById('dev-name-input');
+  const devEmailInput = document.getElementById('dev-email-input');
+  const devPhoneInput = document.getElementById('dev-phone-input');
+  const devPicInput = document.getElementById('dev-pic-input');
 
-    const devNamePreview = document.getElementById('dev-name');
-    const devContactPreview = document.getElementById('dev-contact');
-    const devPicPreview = document.getElementById('dev-pic');
-    const modalPic = document.getElementById('modal-pic');
+  const devNamePreview = document.getElementById('dev-name');
+  const devContactPreview = document.getElementById('dev-contact');
+  const devPicPreview = document.getElementById('dev-pic');
 
-    const currentModelLabel = document.getElementById('current-model');
-    const currentThemeLabel = document.getElementById('current-theme');
+  const DEFAULT_DEV = { name: "Your Name", email: "your@email.com", phone: "+123456789", pic: "" };
 
-    // Defaults
-    const DEFAULT_DEV = {
-      name: "Your Name",
-      email: "your@email.com",
-      phone: "+123456789",
-      pic: ""
-    };
+  function loadDevInfo(){ try{ const r = localStorage.getItem('devInfo'); return r ? JSON.parse(r) : DEFAULT_DEV; }catch(e){return DEFAULT_DEV} }
+  function saveDevInfo(obj){ try{ localStorage.setItem('devInfo', JSON.stringify(obj)); }catch(e){} applyDevInfo(obj); }
+  function applyDevInfo(obj){
+    devNamePreview.textContent = obj.name || DEFAULT_DEV.name;
+    devContactPreview.textContent = \`\${obj.email || DEFAULT_DEV.email} • \${obj.phone || DEFAULT_DEV.phone}\`;
+    devPicPreview.src = obj.pic || '';
+    devNameInput.value = obj.name || '';
+    devEmailInput.value = obj.email || '';
+    devPhoneInput.value = obj.phone || '';
+    devPicInput.value = obj.pic || '';
+  }
 
-    // Dev info persistence
-    function saveDevInfo(obj){
-      try { localStorage.setItem('devInfo', JSON.stringify(obj)); } catch(e){ console.warn('Could not save dev info', e); }
-      applyDevInfo(obj);
-    }
-    function loadDevInfo(){
-      try{
-        const raw = localStorage.getItem('devInfo');
-        return raw ? JSON.parse(raw) : DEFAULT_DEV;
-      }catch(e){ return DEFAULT_DEV; }
-    }
-    function applyDevInfo(obj){
-      devNamePreview.textContent = obj.name || DEFAULT_DEV.name;
-      devContactPreview.textContent = `${obj.email || DEFAULT_DEV.email} • ${obj.phone || DEFAULT_DEV.phone}`;
-      devPicPreview.src = obj.pic || '';
-      modalPic.src = obj.pic || '';
-      devNameInput.value = obj.name || '';
-      devEmailInput.value = obj.email || '';
-      devPhoneInput.value = obj.phone || '';
-      devPicInput.value = obj.pic || '';
-    }
+  function loadHistory(){ try{ const r = localStorage.getItem('chatHistory'); return r ? JSON.parse(r) : []; }catch(e){return []} }
+  function saveHistory(arr){ try{ localStorage.setItem('chatHistory', JSON.stringify(arr)); }catch(e){} }
+  function appendMessage(text, sender, save=true){
+    const el = document.createElement('div');
+    el.className = 'message ' + (sender === 'user' ? 'user' : 'bot');
+    const content = document.createElement('div');
+    content.innerHTML = String(text).replace(/\\n/g,'<br>');
+    el.appendChild(content);
+    chatContainer.appendChild(el);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    if(save){ const h = loadHistory(); h.push({text, sender, time: Date.now()}); saveHistory(h); }
+  }
+  function renderHistory(){ chatContainer.innerHTML = ''; loadHistory().forEach(item => appendMessage(item.text, item.sender, false)); }
 
-    // Chat history persistence
-    function loadHistory(){
-      try{
-        const raw = localStorage.getItem('chatHistory');
-        return raw ? JSON.parse(raw) : [];
-      }catch(e){ return []; }
-    }
-    function saveHistory(arr){
-      try{ localStorage.setItem('chatHistory', JSON.stringify(arr)); } catch(e){ console.warn('Could not save history', e); }
-    }
-    function appendMessage(text, sender, save=true){
-      const el = document.createElement('div');
-      el.className = 'message ' + (sender === 'user' ? 'user' : 'bot');
+  function showTyping(){ removeTyping(); const t = document.createElement('div'); t.id='typing-indicator'; t.className='typing'; t.textContent='Bot is typing…'; chatContainer.appendChild(t); chatContainer.scrollTop = chatContainer.scrollHeight; }
+  function removeTyping(){ const t = document.getElementById('typing-indicator'); if(t) t.remove(); }
 
-      if(sender === 'bot'){
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        meta.textContent = 'Assistant';
-        el.appendChild(meta);
-      }
+  async function sendMessage(){
+    const text = userInput.value.trim();
+    if(!text) return;
+    appendMessage(text, 'user');
+    userInput.value = '';
+    showTyping();
 
-      const content = document.createElement('div');
-      content.innerHTML = String(text).replace(/\n/g,'<br>');
-      el.appendChild(content);
-      chatContainer.appendChild(el);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-
-      if(save){
-        const history = loadHistory();
-        history.push({text, sender, time: Date.now()});
-        saveHistory(history);
-      }
-    }
-
-    function renderHistory(){
-      chatContainer.innerHTML = '';
-      const history = loadHistory();
-      history.forEach(item => appendMessage(item.text, item.sender, false));
-    }
-
-    // Typing indicator
-    function showTyping(){
+    const dev = loadDevInfo();
+    const creatorRegex = /\\b(who (created|made|built) (you|this|the assistant)|who is your creator|who developed you|who made you)\\b/i;
+    if(creatorRegex.test(text)){
       removeTyping();
-      const t = document.createElement('div');
-      t.id = 'typing-indicator';
-      t.className = 'typing';
-      t.textContent = 'Bot is typing…';
-      chatContainer.appendChild(t);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-    function removeTyping(){
-      const t = document.getElementById('typing-indicator');
-      if(t) t.remove();
+      appendMessage(\`I was created by **\${dev.name}** ✨\`, 'bot');
+      return;
     }
 
-    // Model & theme handlers
-    modelSelect.addEventListener('change', () => {
-      currentModelLabel.textContent = modelSelect.options[modelSelect.selectedIndex].text;
-    });
+    try{
+      const model = modelSelect.value;
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, model })
+      });
 
-    toggleMode.addEventListener('click', () => {
-      document.body.classList.toggle('light');
-      const isLight = document.body.classList.contains('light');
-      toggleMode.textContent = isLight ? '☀️' : '🌙';
-      currentThemeLabel.textContent = isLight ? 'Light' : 'Dark';
-      try { localStorage.setItem('themeLight', isLight ? '1' : '0'); } catch(e){}
-    });
-
-    // Clear chat
-    clearBtn.addEventListener('click', () => {
-      try { localStorage.removeItem('chatHistory'); } catch(e){}
-      chatContainer.innerHTML = '';
-      appendMessage('Chat cleared ✅', 'bot', false);
-    });
-
-    // Download chat
-    downloadBtn.addEventListener('click', () => {
-      const history = loadHistory();
-      if(!history.length){
-        alert('No chat history to download.');
+      if(!resp.ok){
+        const errText = await resp.text();
+        removeTyping();
+        appendMessage('⚠️ Server error: ' + errText, 'bot');
         return;
       }
-      let content = 'AI Chat Assistant Conversation\n\n';
-      history.forEach(h => {
-        const who = h.sender === 'user' ? 'You' : 'Bot';
-        content += `${who}: ${h.text}\n\n`;
-      });
-      const blob = new Blob([content], {type:'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'chat_history.txt';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
 
-    // Info modal handlers
-    infoBtn.addEventListener('click', () => {
-      infoModal.style.display = 'block';
-      infoModal.setAttribute('aria-hidden','false');
-    });
-    closeInfo.addEventListener('click', () => {
-      infoModal.style.display = 'none';
-      infoModal.setAttribute('aria-hidden','true');
-    });
+      const data = await resp.json();
+      removeTyping();
+      appendMessage(data.reply || 'No reply', 'bot');
+    }catch(err){
+      removeTyping();
+      appendMessage('⚠️ Network or server error: ' + (err.message || err), 'bot');
+      console.error(err);
+    }
+  }
 
-    saveDev.addEventListener('click', () => {
-      const obj = {
-        name: devNameInput.value.trim() || DEFAULT_DEV.name,
-        email: devEmailInput.value.trim() || DEFAULT_DEV.email,
-        phone: devPhoneInput.value.trim() || DEFAULT_DEV.phone,
-        pic: devPicInput.value.trim() || ''
-      };
-      saveDevInfo(obj);
-      infoModal.style.display = 'none';
-      infoModal.setAttribute('aria-hidden','true');
-    });
+  sendBtn.addEventListener('click', sendMessage);
+  userInput.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    resetDev.addEventListener('click', () => {
-      saveDevInfo(DEFAULT_DEV);
-      infoModal.style.display = 'none';
-      infoModal.setAttribute('aria-hidden','true');
-    });
+  clearBtn.addEventListener('click', () => { localStorage.removeItem('chatHistory'); chatContainer.innerHTML = ''; appendMessage('Chat cleared ✅', 'bot', false); });
+  downloadBtn.addEventListener('click', () => {
+    const history = loadHistory();
+    if(!history.length){ alert('No chat history to download.'); return; }
+    let content = 'AI Chat Assistant Conversation\\n\\n';
+    history.forEach(h => { content += (h.sender === 'user' ? 'You: ' : 'Bot: ') + h.text + '\\n\\n'; });
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chat_history.txt'; document.body.appendChild(a); a.click(); a.remove();
+  });
 
-    // Send message logic with defensive checks
-    async function sendMessage(){
-      const text = userInput.value.trim();
-      if(!text) return;
-      appendMessage(text, 'user');
-      userInput.value = '';
-      showTyping();
+  infoBtn.addEventListener('click', () => { infoModal.style.display = 'block'; });
+  closeInfo.addEventListener('click', () => { infoModal.style.display = 'none'; });
+  saveDev.addEventListener('click', () => { saveDevInfo({ name: devNameInput.value.trim() || DEFAULT_DEV.name, email: devEmailInput.value.trim() || DEFAULT_DEV.email, phone: devPhoneInput.value.trim() || DEFAULT_DEV.phone, pic: devPicInput.value.trim() || '' }); infoModal.style.display = 'none'; });
+  resetDev.addEventListener('click', () => { saveDevInfo(DEFAULT_DEV); infoModal.style.display = 'none'; });
 
-      const dev = loadDevInfo();
-      const creatorRegex = /\b(who (created|made|built) (you|this|the assistant)|who is your creator|who developed you|who made you)\b/i;
-      const askCreator = creatorRegex.test(text);
+  (function init(){
+    applyDevInfo(loadDevInfo());
+    renderHistory();
+    if(loadHistory().length === 0) appendMessage("Hello — I'm your AI assistant. Ask me anything.", 'bot', false);
+  })();
+})();
+</script>
+</body>
+</html>`);
+});
 
-      try{
-        if(askCreator){
-          removeTyping();
-          appendMessage(`I was created by **${dev.name}** ✨`, 'bot');
-          return;
-        }
-
-        // Guard: if puter is not available, show helpful message but keep UI functional
-        if(typeof puter === 'undefined' || !puter || !puter.ai || typeof puter.ai.chat !== 'function'){
-          removeTyping();
-          appendMessage('AI service not available. Ensure the external AI script is loaded and accessible. You can still use local features like developer info, download, and clear.', 'bot');
-          console.warn('puter.ai.chat not available. If you want AI responses, include the provider script and ensure it loads without errors.');
-          return;
-        }
-
-        const model = modelSelect.value;
-        // Call external AI; this is wrapped to avoid breaking UI on errors
-        const response = await puter.ai.chat(text, { model });
-        removeTyping();
-        const respText = (typeof response === 'string') ? response : JSON.stringify(response);
-        appendMessage(respText, 'bot');
-      }catch(err){
-        removeTyping();
-        appendMessage('⚠️ Error: ' + (err && err.message ? err.message : String(err)), 'bot');
-        console.error('AI call failed', err);
-      }
+// --------------------
+// API endpoint: /api/chat
+// For quick testing only: uses the OPENAI_API_KEY constant above.
+// In production, move the key to environment variables and secure the endpoint.
+app.post('/api/chat', async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'PASTE_YOUR_OPENAI_API_KEY_HERE') {
+      return res.status(500).send('Server not configured with OpenAI API key. Edit app.js and paste your key for testing only.');
     }
 
-    // Keyboard & button wiring
-    sendBtn.addEventListener('click', sendMessage);
-    userInput.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault();
-        sendMessage();
-      }
+    const { message, model } = req.body || {};
+    if (!message) return res.status(400).send('Missing "message" in request body.');
+
+    // Build payload for OpenAI Chat Completions
+    const payload = {
+      model: model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    };
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify(payload)
     });
 
-    // Initialization
-    (function init(){
-      // Load theme
-      const themeLight = localStorage.getItem('themeLight');
-      if(themeLight === '1') document.body.classList.add('light');
-      toggleMode.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
-      currentThemeLabel.textContent = document.body.classList.contains('light') ? 'Light' : 'Dark';
+    if (!r.ok) {
+      const text = await r.text();
+      console.error('OpenAI API error', r.status, text);
+      return res.status(502).send('OpenAI API error: ' + text);
+    }
 
-      // Load dev info and history
-      applyDevInfo(loadDevInfo());
-      renderHistory();
+    const data = await r.json();
+    const reply = data?.choices?.[0]?.message?.content ?? 'No response from model.';
+    res.json({ reply });
+  } catch (err) {
+    console.error('Server error', err);
+    res.status(500).send('Server error: ' + (err.message || String(err)));
+  }
+});
 
-      // Set model label
-      currentModelLabel.textContent = modelSelect.options[modelSelect.selectedIndex].text;
-
-      // Welcome message if empty
-      const history = loadHistory();
-      if(history.length === 0){
-        appendMessage("Hello — I'm your AI assistant. Ask me anything, or click ℹ️ to set developer info.", 'bot', false);
-      }
-
-      // Defensive console log
-      console.log('AI Chat Assistant initialized. puter available:', typeof puter !== 'undefined');
-    })();
-
-    // Accessibility: close modal on Escape
-    window.addEventListener('keydown', (e) => {
-      if(e.key === 'Escape'){
-        if(infoModal.style.display === 'block'){
-          infoModal.style.display = 'none';
-          infoModal.setAttribute('aria-hidden','true');
-        }
-      }
-    });
-  </script>
-</body>
-</html>
+// Serve static (none) and start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(\`Server running on http://localhost:\${PORT}\`);
+  console.log('Edit the OPENAI_API_KEY constant in this file to paste your key for testing only.');
+});
